@@ -1,0 +1,120 @@
+---
+title: "Carbon biomass"
+author: "Shai Vaz"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, include=FALSE}
+# Data Wrangling
+library(dplyr)
+library(readr)
+library(tidyr)
+library(glue)
+library(curl)
+
+# Geographic
+library(sf)
+library(terra)
+library(exactextractr)
+
+# Personal functions
+source("../Functions/bulk_rds.R")
+source("../Functions/process_biomass.R")
+```
+
+# Importing external files
+
+```{r}
+bulk_read_rds(
+  brazil,
+  amc_1991_2022
+)
+```
+
+
+# Preparing data
+
+This is a very memory-intensive process. The data is divided in large tiles of satellite imagery. In a shape-file, I have data on the tiles location. First, I select data on the tiles in Brazil, and save the links to the API with pixel level data on each tile.
+
+I wrote two functions to perform this data cleaning process. First, I download in parallel each tile and save the raster in the hard drive. Then, I use the exact_extract algorithm to get zonal sum by AMC, from each tile. This zonal statistic calculation is applied each of the 17 tiles in the Brazilian territory. Finally, I aggregated all the 17 zonal statistics by AMC, resulting in the sum of carbon biomass in each zone.
+
+## Open shapefile
+
+First, I open the metadata on the tiles, saved in a shapefile, which contains the location and the API link to download the raster.
+
+```{r}
+c_meta <- st_read(
+  "../Inputs/carbon_biomass/Aboveground_Live_Woody_Biomass_Density.shp"
+  ) 
+
+# Reproject the dataframe
+# Use the same CRS as Brazil (SIRGAS 2000) 
+
+c_meta <- st_transform(
+  c_meta,
+  st_crs(brazil)
+  )
+```
+
+## Subset region
+
+Then, I intersect with the shape of the Brazilian territory. In sequence, I extract the links to the API with pixel level data on each tile.
+
+```{r}
+c_meta_br <- st_intersection(
+  c_meta,
+  brazil
+)
+
+links <- setNames(
+  # save links as list
+  as.list(c_meta_br$Mg_px_1_do), 
+  # take id as names
+  c_meta_br$tile_id
+  )
+```
+
+## Align AMC CRS to raster's
+
+Here, I set the CRS of my AMC polygons to the same of the carbon biomass rasters (WGS 84).
+
+```{r}
+amc_84 <- st_transform(
+  amc_1991_2022,
+  crs = "EPSG:4326"
+  ) |> 
+  select(-area_amc)
+```
+
+# Download and save the rasters
+
+Downloads every tile in parallel and saves in drive.
+
+```{r, eval=FALSE}
+download_biomass(
+  api_links = links,
+  folder_path = "../Biomass"
+  )
+```
+
+# Zonal statistics
+
+Now I calculate the zonal sum by AMC.
+
+```{r}
+biomass <- process_biomass(
+  zones = amc_84,
+  folder_path = "../Biomass"
+  )
+```
+
+# Export as RDS
+
+```{r}
+bulk_write_rds(biomass)
+```
