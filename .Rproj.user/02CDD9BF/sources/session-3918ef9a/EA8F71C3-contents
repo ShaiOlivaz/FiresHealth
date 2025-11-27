@@ -14,16 +14,19 @@ library(dplyr)
 ```
 
 # Download data
+## Every satellite
 
 Create a vector for the link and for the file names.
 
 ```{r}
 api_links_base = "https://dataserver-coids.inpe.br/queimadas/queimadas/focos/csv/anual/Brasil_todos_sats/"
-api_links_file = tibble(
+api_links = tibble(
   year = 2004:2024,
-  file = paste0("focos_br_todos-sats_", year),
+  file = paste0("focos_br_todos-sats_", year, ".csv"),
   url = paste0(api_links_base, file, ".zip")
   )
+
+
 
 ```
 

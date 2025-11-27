@@ -9,6 +9,8 @@
 ~%2FFires%20and%20Health%2FCodes%2Fmaps_fires_pollution.R="11990DE5"
 ~%2FGitHub%2FFiresHealth%2FCode%2F1_geo_data.Rmd="1B88C249"
 ~%2FGitHub%2FFiresHealth%2FCode%2F2_fires_analysis.Rmd="2961BC03"
+~%2FGitHub%2FFiresHealth%2FCode%2FFunctions%2Fdownload_inpe_files.R="A0C0C358"
+~%2FGitHub%2FFiresHealth%2FCode%2Fprocess_biomass.R="AFED905D"
 ~%2FGitHub%2FFiresHealth%2FCode%2Fsetup.R="5D56E056"
 ~%2FGitHub%2Fpasture_research%2FCode%2F1_geo_data.Rmd="CD0F2508"
 ~%2FGitHub%2Fpasture_research%2FCode%2F9_carbon_biomass.Rmd="3AA5B80C"
