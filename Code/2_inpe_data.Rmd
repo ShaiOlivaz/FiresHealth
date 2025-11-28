@@ -60,6 +60,8 @@ zip_links <- api_links |>
 # unzip all files
 multi_unzip(zip_links = zip_links, dest_folder = folder_path)
 
+# 
+
 # remove zip files if csv is present
 cleanup_zips(
   file_names = zip_links$file,
