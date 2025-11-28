@@ -18,23 +18,26 @@ library(readr)
 
 # Personal functions
 source("./Functions/bulk_rds.R")
-source("./Functions/multi_download_from_df.R")
+source("./Functions/multi_download_from_df_iter.R")
+source("./Functions/multi_unzip")
+source("./Functions/cleanup_zips")
 ```
 
-# Download, unzip
-# Every satellite
+# Download, unzip, cleanup
+## Every satellite
 
 This section creates a dataframe with filename, path and url of files to download from the INPE API. Since parallel downloading is not supported by the API, I iterate on the dataframe using purrr mappings to apply simple curl download requests.
 
-I then need to unzip the files, which may or may not be inside another folder in the zip called tmp.   
+I then need to unzip the files, which may or may not be inside another folder in the zip called tmp. Finally, I clean-up the folder removing the .zip files.
 
 ```{r}
 api_links_base = "https://dataserver-coids.inpe.br/queimadas/queimadas/focos/csv/anual/Brasil_todos_sats/"
 folder_path = "../Inputs/fires/todos_sats/"
+file_base = "focos_br_todos-sats_"
 
 api_links = tibble(
   year = 2003:2024,
-  file = paste0("focos_br_todos-sats_", year),
+  file = paste0(file_base, year),
   url = paste0(api_links_base, file, ".zip"),
   path = paste0(folder_path, file, ".zip")
 )
@@ -60,9 +63,46 @@ multi_unzip(zip_links = zip_links, dest_folder = folder_path)
 # remove zip files if csv is present
 cleanup_zips(
   file_names = zip_links$file,
-  
+  folder_path = folder_path
 )
-
 ```
 
+## Reference satellite
+
+```{r}
+api_links_base = ""
+folder_path = ""
+file_base = ""
+
+api_links = tibble(
+  year = 2003:2024,
+  file = paste0(file_base, year),
+  url = paste0(api_links_base, file, ".zip"),
+  path = paste0(folder_path, file, ".zip")
+)
+
+# download data from server folder
+multi_download_from_df_iter(api_links = api_links)
+
+
+# Create dataframe with zip path links
+zip_links <- api_links |> 
+  # .zip files up to 2017 have a tmp folder
+  mutate(
+    zip_path = if_else(
+      year <= 2017,
+      paste0("tmp/", file, ".csv"),
+      NA
+    )
+  )
+  
+# unzip all files
+multi_unzip(zip_links = zip_links, dest_folder = folder_path)
+
+# remove zip files if csv is present
+cleanup_zips(
+  file_names = zip_links$file,
+  folder_path = folder_path
+)
+```
 
