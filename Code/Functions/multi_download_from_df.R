@@ -17,7 +17,7 @@ library(dplyr)
 ##' @param folder_path A \strong{character string} specifying the path to the
 ##'   directory where the downloaded CSV files should be saved.
 
-multi_download_from_df <- function(api_links, folder_path) {
+multi_download_from_df <- function(api_links, folder_path, verbose = FALSE) {
   
   
   
@@ -39,7 +39,10 @@ multi_download_from_df <- function(api_links, folder_path) {
   # Perform parallel download using curl::multi_download
   results <- curl::multi_download(
     urls = missing_links,
-    destfiles = missing_paths
+    destfiles = missing_paths,
+    verbose = verbose,
+    resume = TRUE,              # Resume if partially downloaded
+    total_con = 1
   )
   
   # Check for errors
