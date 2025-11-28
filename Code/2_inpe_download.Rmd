@@ -19,8 +19,8 @@ library(readr)
 # Personal functions
 source("./Functions/bulk_rds.R")
 source("./Functions/multi_download_from_df_iter.R")
-source("./Functions/multi_unzip")
-source("./Functions/cleanup_zips")
+source("./Functions/multi_unzip.R")
+source("./Functions/cleanup_zips.R")
 ```
 
 # Download, unzip, cleanup
@@ -60,8 +60,6 @@ zip_links <- api_links |>
 # unzip all files
 multi_unzip(zip_links = zip_links, dest_folder = folder_path)
 
-# 
-
 # remove zip files if csv is present
 cleanup_zips(
   file_names = zip_links$file,
@@ -72,9 +70,9 @@ cleanup_zips(
 ## Reference satellite
 
 ```{r}
-api_links_base = ""
-folder_path = ""
-file_base = ""
+api_links_base = "https://dataserver-coids.inpe.br/queimadas/queimadas/focos/csv/anual/Brasil_sat_ref/"
+folder_path = "../Inputs/fires/sat_ref/"
+file_base = "focos_br_ref_"
 
 api_links = tibble(
   year = 2003:2024,
@@ -91,11 +89,7 @@ multi_download_from_df_iter(api_links = api_links)
 zip_links <- api_links |> 
   # .zip files up to 2017 have a tmp folder
   mutate(
-    zip_path = if_else(
-      year <= 2017,
-      paste0("tmp/", file, ".csv"),
-      NA
-    )
+    zip_path = NA
   )
   
 # unzip all files
