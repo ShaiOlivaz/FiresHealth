@@ -1,8 +1,0 @@
-"0","api_links_file = tibble(
-  year = 2004:2024,
-  file = paste0(""focos_br_todos-sats_"", year),
-  url = paste0(api_links_base, file, "".zip"")
-  )
-"
-"2","Erro: objeto 'api_links_base' não encontrado
-"

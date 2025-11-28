@@ -1,0 +1,19 @@
+api_links_base = "https://dataserver-coids.inpe.br/queimadas/queimadas/focos/csv/anual/Brasil_todos_sats/"
+folder_path = "../Inputs/fires/todos_sats/"
+
+api_links = tibble(
+  year = 2003:2024,
+  file = paste0("focos_br_todos-sats_", year, ".zip"),
+  url = paste0(api_links_base, file),
+  path = output_paths <- file.path(folder_path, api_links$file)
+)
+
+
+# download data from server folder
+
+multi_download_from_df_iter(
+  api_links = api_links,
+  folder_path = folder_path
+)
+
+api_links$url
