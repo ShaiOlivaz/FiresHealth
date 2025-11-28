@@ -1,0 +1,68 @@
+---
+title: "Download Inpe Data"
+author: "Shai Vaz"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+# Data Wrangling
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(readr)
+
+# Personal functions
+source("./Functions/bulk_rds.R")
+source("./Functions/multi_download_from_df.R")
+```
+
+# Download, unzip
+# Every satellite
+
+This section creates a dataframe with filename, path and url of files to download from the INPE API. Since parallel downloading is not supported by the API, I iterate on the dataframe using purrr mappings to apply simple curl download requests.
+
+I then need to unzip the files, which may or may not be inside another folder in the zip called tmp.   
+
+```{r}
+api_links_base = "https://dataserver-coids.inpe.br/queimadas/queimadas/focos/csv/anual/Brasil_todos_sats/"
+folder_path = "../Inputs/fires/todos_sats/"
+
+api_links = tibble(
+  year = 2003:2024,
+  file = paste0("focos_br_todos-sats_", year),
+  url = paste0(api_links_base, file, ".zip"),
+  path = paste0(folder_path, file, ".zip")
+)
+
+# download data from server folder
+multi_download_from_df_iter(api_links = api_links)
+
+
+# Create dataframe with zip path links
+zip_links <- api_links |> 
+  # .zip files up to 2017 have a tmp folder
+  mutate(
+    zip_path = if_else(
+      year <= 2017,
+      paste0("tmp/", file, ".csv"),
+      NA
+    )
+  )
+  
+# unzip all files
+multi_unzip(zip_links = zip_links, dest_folder = folder_path)
+
+# remove zip files if csv is present
+cleanup_zips(
+  file_names = zip_links$file,
+  
+)
+
+```
+
+
