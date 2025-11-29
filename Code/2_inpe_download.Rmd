@@ -137,11 +137,4 @@ cleanup_zips(
 )
 ```
 
-```{r}
-curl_download(
-  "https://dataserver-coids.inpe.br/queimadas/queimadas/focos/csv/anual/Brasil_sat_ref/focos_br_ref_2009",
-  "../Inputs/",
-  quiet = FALSE
-)
-```
 
