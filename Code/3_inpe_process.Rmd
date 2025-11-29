@@ -1,0 +1,23 @@
+---
+title: "3_inpe_process"
+author: "Shai Vaz"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r, include=FALSE}
+# Data Wrangling
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(readr)
+
+# Personal functions
+source("./Functions/bulk_rds.R")
+```
+
