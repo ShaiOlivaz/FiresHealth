@@ -34,13 +34,19 @@ multi_download_from_df_iter <- function(api_links) {
   message(glue("Downloading {nrow(files_to_download)} files sequentially using purrr..."))
   
   # Define the worker function
-  # This handles the download, the timeout, and the "polite" pause
   download_worker <- function(url, path) {
     
     message(glue("Downloading: {basename(path)}"))
     
-    # Create handle for 10-minute timeout
-    h <- new_handle(timeout = 600)
+    # --- UPDATED HANDLE ---
+    # We add ssl_verifypeer = 0 to ignore certificate issues
+    # We add a User-Agent to look like a browser (Chrome)
+    h <- new_handle(
+      timeout = 1200,
+      ssl_verifypeer = 0, 
+      ssl_verifyhost = 0,
+      useragent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
+    )
     
     tryCatch({
       curl_download(
@@ -48,14 +54,12 @@ multi_download_from_df_iter <- function(api_links) {
         path, 
         quiet = FALSE, 
         handle = h)
-      Sys.sleep(2) # Polite pause
+      Sys.sleep(2) 
     }, error = function(e) {
-      warning(glue("FAILED: {filename} - {e$message}"))
+      # We keep the fix from the previous step here
+      warning(glue("FAILED: {basename(path)} - {e$message}"))
     })
   }
-  
-  # Execute with walk2
-  # We use walk2 because we have two inputs (url, path) and we want side-effects (files)
   
   purrr::walk2(
     files_to_download$url, 
