@@ -17,7 +17,6 @@ library(stringr)
 library(readr)
 
 # Personal functions
-source("./Functions/bulk_rds.R")
 source("./Functions/multi_download_from_df_iter.R")
 source("./Functions/multi_unzip.R")
 source("./Functions/cleanup_zips.R")
