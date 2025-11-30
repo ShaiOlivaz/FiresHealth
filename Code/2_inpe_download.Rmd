@@ -31,7 +31,7 @@ I then need to unzip the files, which may or may not be inside another folder in
 
 ```{r}
 api_links_base = "https://dataserver-coids.inpe.br/queimadas/queimadas/focos/csv/anual/Brasil_todos_sats/"
-folder_path = "../Inputs/fires/todos_sats/"
+folder_path = "../Inputs/fires/todos_sats/csv/"
 file_base = "focos_br_todos-sats_"
 
 api_links = tibble(
@@ -70,7 +70,7 @@ cleanup_zips(
 
 ```{r}
 api_links_base = "https://dataserver-coids.inpe.br/queimadas/queimadas/focos/csv/anual/Brasil_sat_ref/"
-folder_path = "../Inputs/fires/sat_ref/"
+folder_path = "../Inputs/fires/sat_ref/csv/"
 file_base = "focos_br_ref_"
 
 api_links = tibble(
@@ -105,7 +105,7 @@ cleanup_zips(
 
 ```{r}
 api_links_base = "https://dataserver-coids.inpe.br/queimadas/queimadas/sisam/"
-folder_path = "../Inputs/sisam/"
+folder_path = "../Inputs/sisam/csv/"
 file_base = "dados_sisam-"
 
 api_links = tibble(
