@@ -19,7 +19,6 @@ library(readr)
 library(arrow)
 
 # Personal functions
-source("./Functions/bulk_rds.R")
 ```
 
 # Importing data as Arrow dataset
@@ -29,6 +28,10 @@ source("./Functions/bulk_rds.R")
 We import using the arrow library.
 
 ```{r}
-
+dataset_path = "../Inputs/fires/todos_sats/"
+fires_all_sats = open_dataset(
+  dataset_path,
+  format = "csv"
+)
 ```
 
