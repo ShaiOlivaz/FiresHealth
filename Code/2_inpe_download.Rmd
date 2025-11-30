@@ -24,7 +24,7 @@ source("./Functions/cleanup_zips.R")
 ```
 
 # Download, unzip, cleanup
-## Every satellite
+## All satellites
 
 This section creates a dataframe with filename, path and url of files to download from the INPE API. Since parallel downloading is not supported by the API, I iterate on the dataframe using purrr mappings to apply simple curl download requests.
 
@@ -137,6 +137,11 @@ cleanup_zips(
   file_names = zip_links$file,
   folder_path = folder_path
 )
+```
+
+# Clear workspace
+```{r}
+rm(list = ls())
 ```
 
 
