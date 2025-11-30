@@ -1,5 +1,5 @@
 ---
-title: "3_inpe_process"
+title: "INPE Data Processing"
 author: "Shai Vaz"
 date: "`r Sys.Date()`"
 output: html_document
@@ -16,8 +16,19 @@ library(dplyr)
 library(tidyr)
 library(stringr)
 library(readr)
+library(arrow)
 
 # Personal functions
 source("./Functions/bulk_rds.R")
+```
+
+# Importing data as Arrow dataset
+
+## All Satellites
+
+We import using the arrow library.
+
+```{r}
+
 ```
 
