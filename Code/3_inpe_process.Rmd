@@ -61,16 +61,6 @@ write_dataset(
 )
 ```
 
-Finally, we reopen with parquet files.
-
-```{r}
-# Reopen dataset from parquet file 
-dataset_parquet_path = "../Inputs/fires/todos_sats/parquet"
-fires_all_sats <- open_dataset(
-  dataset_parquet_path,
-  format = "parquet"
-)
-```
 
 ## Reference Satellite
 
@@ -102,7 +92,64 @@ write_dataset(
 )
 ```
 
-Reopen from parquet.
+## Sisam Data
+
+```{r}
+dataset_csv_path = "../Inputs/sisam/csv/"
+dataset_parquet_path = "../Inputs/sisam/parquet"
+
+# Import csv
+sisam = open_csv_dataset(
+  dataset_csv_path,
+  col_types = schema(
+    longitude = double(),
+    latitude = double(),
+    co_ppb = double(),
+    no2_ppb = double(),
+    o3_ppb = double(),
+    pm25_ugm3 = double(),
+    so2_ugm3 = double(),
+    precipitacao_mmdia = double(),
+    temperatura_c = double(),
+    umidade_relativa_percentual = double(),
+    vento_direcao_grau = double(),
+    vento_velocidade_ms = double()
+    )
+)
+
+# Create Year and Month Columns
+sisam <- sisam |> 
+  mutate(
+    year = year(datahora),
+    month = month(datahora),
+    day = day(datahora)
+  )
+
+# Export as Parquet
+write_dataset(
+  sisam,
+  path = dataset_parquet_path,
+  format = "parquet",
+  partitioning = c("year")
+)
+```
+
+# Reopen from Parquet
+
+Finally, we reopen data with parquet files in the backend.
+
+## All Satellites
+
+```{r}
+# Reopen dataset from parquet file 
+dataset_parquet_path = "../Inputs/fires/todos_sats/parquet"
+fires_all_sats <- open_dataset(
+  dataset_parquet_path,
+  format = "parquet"
+)
+```
+
+## Reference Satellite
 
 ```{r}
 # Reopen dataset from parquet file
@@ -115,4 +162,32 @@ fires_ref_sat <- open_dataset(
 
 ## Sisam Data
 
+```{r}
+# Reopen dataset from parquet file
+dataset_parquet_path = "../Inputs/sisam/parquet"
+sisam <- open_dataset(
+  dataset_parquet_path,
+  format = "parquet"
+)
+```
+
+# Playground 
+
+```{r}
+fires_ref_sat_sample <- fires_ref_sat |> 
+  filter(year == 2016) |> 
+  slice_sample(n = 100) |> 
+  collect()
+
+fires_all_sats_sample <- fires_all_sats |> 
+  filter(year == 2016) |> 
+  slice_sample(n = 100) |> 
+  collect()
+
+sisam_sample <- sisam |> 
+  filter(year == 2016) |> 
+  slice_sample(n = 100) |> 
+  collect()
+
+```
 
