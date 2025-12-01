@@ -17,6 +17,7 @@ library(tidyr)
 library(stringr)
 library(readr)
 library(arrow)
+library(lubridate)
 
 # Personal functions
 ```
@@ -25,13 +26,45 @@ library(arrow)
 
 ## All Satellites
 
-We import using the arrow library.
+We import using the arrow library, and save as parquet files for fast retrieval.
 
 ```{r}
-dataset_path = "../Inputs/fires/todos_sats/"
-fires_all_sats = open_dataset(
-  dataset_path,
-  format = "csv"
+dataset_csv_path = "../Inputs/fires/todos_sats/csv/"
+dataset_parquet_path = "../Inputs/fires/todos_sats/parquet"
+
+# Import csv
+fires_all_sats = open_csv_dataset(
+  dataset_csv_path,
+  col_types = schema(
+    numero_dias_sem_chuva = double(),
+    precipitacao = double(),
+    risco_fogo = double(),
+    id_area_industrial = double(),
+    frp = double()
+  ) 
+)
+
+# Create Year and Month Columns
+fires_all_sats <- fires_all_sats |> 
+  mutate(
+    year = year(data_pas),
+    month = month(data_pas)
+  )
+
+# Export as Parquet
+write_dataset(
+  fires_all_sats,
+  path = dataset_parquet_path,
+  format = "parquet",
+  partitioning = c("year")
+)
+
+# Reopen dataset from parquet file 
+fires_all_sats <- open_dataset(
+  dataset_parquet_path,
+  format = "parquet"
 )
 ```
+
+
 
