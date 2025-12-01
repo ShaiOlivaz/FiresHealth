@@ -10,7 +10,7 @@
       # Evaluate the object name to get the actual object
       object <- eval(object_name, envir = parent.frame())
       # Construct the file path
-      file_path <- paste0("../Variables/", deparse(object_name), ".rds")
+      file_path <- paste0("./Variables/", deparse(object_name), ".rds")
       # Save the object to an .rds file
       write_rds(object, file = file_path)
     }
@@ -25,7 +25,7 @@
     # Loop through each object name
     for (obj_name in object_names) {
       # Construct the file path
-      file_path <- file.path("../Variables", paste0(obj_name, ".rds"))
+      file_path <- file.path("./Variables", paste0(obj_name, ".rds"))
       
       # Check if the file exists
       if (!file.exists(file_path)) {
