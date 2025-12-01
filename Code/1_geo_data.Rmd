@@ -20,6 +20,9 @@ library(readr)
 library(sf)
 library(geobr)
 library(geoarrow)
+
+# Personal functions
+
 ```
 
 # Municipality Seats
@@ -35,5 +38,12 @@ muni_seat <- read_municipal_seat(year = 2010) |>
     
     by = "code_state"
   )
+```
+
+# Save as RDS
+```{r}
+bulk_write_rds(
+  muni_seat
+)
 ```
 
