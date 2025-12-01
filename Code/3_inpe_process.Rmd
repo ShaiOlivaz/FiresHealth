@@ -24,9 +24,10 @@ library(lubridate)
 
 # Importing data as Arrow dataset
 
-## All Satellites
 
 We import using the arrow library, and save as parquet files for fast retrieval.
+
+## All Satellites
 
 ```{r}
 dataset_csv_path = "../Inputs/fires/todos_sats/csv/"
@@ -58,13 +59,60 @@ write_dataset(
   format = "parquet",
   partitioning = c("year")
 )
+```
 
+Finally, we reopen with parquet files.
+
+```{r}
 # Reopen dataset from parquet file 
+dataset_parquet_path = "../Inputs/fires/todos_sats/parquet"
 fires_all_sats <- open_dataset(
   dataset_parquet_path,
   format = "parquet"
 )
 ```
 
+## Reference Satellite
+
+```{r}
+dataset_csv_path = "../Inputs/fires/sat_ref/csv/"
+dataset_parquet_path = "../Inputs/fires/sat_ref/parquet"
+
+# Import csv
+fires_ref_sat = open_csv_dataset(
+  dataset_csv_path,
+  col_types = schema(
+    id_bdq = string()
+  ) 
+)
+
+# Create Year and Month Columns
+fires_ref_sat <- fires_ref_sat |> 
+  mutate(
+    year = year(data_pas),
+    month = month(data_pas)
+  )
+
+# Export as Parquet
+write_dataset(
+  fires_ref_sat,
+  path = dataset_parquet_path,
+  format = "parquet",
+  partitioning = c("year")
+)
+```
+
+Reopen from parquet.
+
+```{r}
+# Reopen dataset from parquet file
+dataset_parquet_path = "../Inputs/fires/sat_ref/parquet"
+fires_ref_sat <- open_dataset(
+  dataset_parquet_path,
+  format = "parquet"
+)
+```
+
+## Sisam Data
 
 
