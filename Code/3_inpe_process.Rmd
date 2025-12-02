@@ -15,15 +15,26 @@ knitr::opts_chunk$set(echo = TRUE)
 library(dplyr)
 library(tidyr)
 library(stringr)
+library(stringi)
 library(readr)
-library(arrow)
 library(lubridate)
+library(fuzzyjoin)
+
+# Fast Data
+library(arrow)
+library(duckdb)
+library(dbplyr)
+library(duckspatial)
+
+# Geographic
+library(sf)
+library(duckspatial)
 
 # Personal functions
+source("./Functions/bulk_rds.R")
 ```
 
 # Importing data as Arrow dataset
-
 
 We import using the arrow library, and save as parquet files for fast retrieval.
 
@@ -134,6 +145,15 @@ write_dataset(
 )
 ```
 
+## Municipality Seats
+
+```{r}
+bulk_read_rds(
+  muni_seat
+)
+```
+
+
 # Reopen from Parquet
 
 Finally, we reopen data with parquet files in the backend.
@@ -171,7 +191,7 @@ sisam <- open_dataset(
 )
 ```
 
-# Playground 
+# Create samples for tests 
 
 ```{r}
 fires_ref_sat_sample <- fires_ref_sat |> 
@@ -190,4 +210,33 @@ sisam_sample <- sisam |>
   collect()
 
 ```
+
+# Intersect with municipalities
+
+## Create Spacial DuckDB connection
+
+```{r}
+## create connection
+conn <- dbConnect(duckdb())
+## install and load spatial extension
+ddbs_install(conn)
+ddbs_load(conn)
+```
+
+## Connect Tables to DuckDB
+
+Connect Municipality Points and fires data.
+
+```{r}
+ddbs_write_vector(conn, muni_seat, "muni_seat", overwrite = T)
+to_duckdb(fires_ref_sat, con = conn, table_name = "fires_ref_sat")
+```
+
+## Perform spacial join
+
+```{r}
+
+```
+
+
 
