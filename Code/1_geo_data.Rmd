@@ -43,6 +43,11 @@ muni_seat <- read_municipal_seat(year = 2010) |>
     name_muni,
     name_state,
     geom
+  ) |>
+  # Get latitude and longitude
+  mutate(
+    lon_muni = st_coordinates(geom)[,1],
+    lat_muni = st_coordinates(geom)[,2]
   )
 ```
 
