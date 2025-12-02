@@ -19,10 +19,9 @@ library(readr)
 # Geographic
 library(sf)
 library(geobr)
-library(geoarrow)
 
 # Personal functions
-
+source("./Functions/bulk_rds.R")
 ```
 
 # Municipality Seats
@@ -37,6 +36,13 @@ muni_seat <- read_municipal_seat(year = 2010) |>
       select(code_state, name_state),
     
     by = "code_state"
+  ) |> 
+  # Minimalist dataframe
+  select(
+    code_muni,
+    name_muni,
+    name_state,
+    geom
   )
 ```
 
