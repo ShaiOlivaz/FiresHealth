@@ -382,6 +382,10 @@ correction_table <- unmatched_sisam_names |>
 ```{r}
 sisam_right_names <- sisam_sample |> 
   as_arrow_table() |> 
+  select(
+    # SELECT ONLY RELEVANT COLUMNS
+  )
+
   mutate(
     name_muni = str_strip(municipio_nome),
     name_state = str_strip(uf_nome) 
