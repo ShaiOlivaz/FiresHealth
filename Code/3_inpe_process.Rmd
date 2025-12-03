@@ -201,6 +201,14 @@ sisam <- open_dataset(
 )
 ```
 
+For conference, we check the number of observations in the dataset. It's 163,850,677.
+
+```{r}
+sisam |> 
+  summarise(n()) |> 
+  collect()
+```
+
 # Create samples for tests 
 
 ```{r}
@@ -209,10 +217,10 @@ fires_ref_sat_sample <- fires_ref_sat |>
   slice_sample(n = 100) |> 
   collect()
 
-fires_all_sats_sample <- fires_all_sats |> 
-  filter(year == 2016) |> 
-  slice_sample(n = 100) |> 
-  collect()
+# fires_all_sats_sample <- fires_all_sats |> 
+#   filter(year == 2016) |> 
+#   slice_sample(n = 100) |> 
+#   collect()
 
 sisam_sample <- sisam |> 
   filter(year == 2016) |> 
@@ -277,6 +285,91 @@ fires_by_muni_buffer50 <- open_dataset(
   dataset_parquet_path,
   format = "parquet"
 )
+```
+
+Sample for tests.
+
+```{r}
+fires_by_muni_buffer50_sample <- fires_by_muni_buffer50 |> 
+  filter(year == 2016) |> 
+  slice_sample(n = 100) |> 
+  collect()
+```
+
+# Align Municipality names in sisam data
+
+## Create Municipality Dictionary
+
+```{r}
+muni_dict <- muni_seat |> 
+  st_drop_geometry() |> 
+  select(
+    code_muni, name_muni, name_state
+  ) |> 
+  mutate(
+    name_muni = stri_trans_general(name_muni, "Latin-ASCII") |> str_to_lower(),
+    name_state = stri_trans_general(name_state, "Latin-ASCII") |> str_to_lower()
+  )
+```
+
+## Binding to strip strings in arrow
+
+Note that, since stringi functions have not been implemented to arrow. I need to create a custom binding and register it. 
+
+```{r}
+str_strip <- function(context, string) {
+  string |> 
+    stringr::str_to_lower() |> 
+    stringi::stri_trans_general("Latin-ASCII")
+}
+
+register_scalar_function(
+  name = "str_strip",
+  fun = str_strip,
+  in_type = string(),
+  out_type = string(),
+  auto_convert = TRUE
+)
+```
+
+## Names that fail to match with Sisam
+
+```{r}
+# Check if any municipality remains unmatched
+unmatched_sisam_names <- sisam |> 
+  select(
+    uf_nome, municipio_nome
+  ) |> 
+  mutate(
+    name_muni = str_strip(municipio_nome),
+    name_state = str_strip(uf_nome) 
+  ) |>
+  anti_join(
+    muni_dict,
+    by = join_by(name_muni, name_state)
+  ) |> 
+  select(
+    name_muni, name_state
+  ) |> 
+  distinct() |> 
+  collect()
+```
+
+# Match
+
+```{r}
+sisam_right_names <- sisam_sample |> 
+  as_arrow_table() |> 
+  mutate(
+    name_muni = str_strip(municipio_nome),
+    name_state = str_strip(uf_nome) 
+  ) |>
+  left_join(
+    muni_dict,
+    by = join_by(name_muni, name_state),
+    relationship = "many-to-one"
+  ) |> 
+  collect()
 ```
 
 
