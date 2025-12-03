@@ -29,6 +29,7 @@ library(duckspatial)
 # Geographic
 library(sf)
 library(duckspatial)
+library(geoarrow)
 
 # Personal functions
 source("./Functions/bulk_rds.R")
@@ -235,6 +236,29 @@ to_duckdb(fires_ref_sat, con = conn, table_name = "fires_ref_sat")
 ## Perform spacial join
 
 ```{r}
+
+# sample test
+fires_test <- fires_ref_sat_sample |> 
+  select(
+    - c(foco_id, pais, estado, municipio)
+  ) |> 
+  st_as_sf(
+    coords = c("lon", "lat"), 
+    crs = st_crs(muni_seat),
+    remove = FALSE
+  )
+
+ddbs_write_vector(conn, fires_test, "fires_test", overwrite = T)
+
+buffer = 50*1000 # in meters
+
+ddbs_join(
+  "fires_test",
+  "muni_seat",
+  join = ST_DWithin(buffer),
+  conn = conn
+  # name = "fires_by_muni"
+)
 
 ```
 
