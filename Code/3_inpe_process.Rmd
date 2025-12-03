@@ -92,7 +92,8 @@ fires_ref_sat = open_csv_dataset(
 fires_ref_sat <- fires_ref_sat |> 
   mutate(
     year = year(data_pas),
-    month = month(data_pas)
+    month = month(data_pas),
+    day = day(data_pas)
   )
 
 # Export as Parquet
@@ -214,51 +215,36 @@ sisam_sample <- sisam |>
 
 # Intersect with municipalities
 
-## Create Spacial DuckDB connection
+## Set buffer
 
 ```{r}
-## create connection
-conn <- dbConnect(duckdb())
-## install and load spatial extension
-ddbs_install(conn)
-ddbs_load(conn)
+buffer = 50*1000 # in meters
 ```
 
-## Connect Tables to DuckDB
-
-Connect Municipality Points and fires data.
+## Join with Municipality Seats
 
 ```{r}
-ddbs_write_vector(conn, muni_seat, "muni_seat", overwrite = T)
-to_duckdb(fires_ref_sat, con = conn, table_name = "fires_ref_sat")
-```
-
-## Perform spacial join
-
-```{r}
-
-# sample test
-fires_test <- fires_ref_sat_sample |> 
+fires_by_muni_buffer50 <- fires_ref_sat |>
+  # Filter only relevant columns
   select(
-    - c(foco_id, pais, estado, municipio)
+    id_bdq, lat, lon, data_pas, bioma, month, year, day
   ) |> 
+  # Convert to simple feature
+  collect() |> 
   st_as_sf(
     coords = c("lon", "lat"), 
     crs = st_crs(muni_seat),
     remove = FALSE
-  )
-
-ddbs_write_vector(conn, fires_test, "fires_test", overwrite = T)
-
-buffer = 50*1000 # in meters
-
-ddbs_join(
-  "fires_test",
-  "muni_seat",
-  join = ST_DWithin(buffer),
-  conn = conn
-  # name = "fires_by_muni"
-)
+  ) %>%
+  # join with municipalities, within buffer
+  st_join(
+      muni_seat,
+      .,
+      join = st_is_within_distance, 
+      dist = buffer,
+      left = FALSE  # Inner join (only keep matches)
+    ) |> 
+  st_drop_geometry()
 
 ```
 
