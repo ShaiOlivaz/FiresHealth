@@ -22,9 +22,7 @@ library(fuzzyjoin)
 
 # Fast Data
 library(arrow)
-library(duckdb)
 library(dbplyr)
-library(duckspatial)
 
 # Geographic
 library(sf)
@@ -182,6 +180,16 @@ fires_ref_sat <- open_dataset(
 )
 ```
 
+For conference, we check the number of observations in the dataset. It's 5,107,973.
+
+```{r}
+fires_ref_sat |> 
+  select(id_bdq) |> 
+  summarise(n()) |> 
+  collect()
+```
+
+
 ## Sisam Data
 
 ```{r}
@@ -235,11 +243,10 @@ fires_by_muni_buffer50 <- fires_ref_sat |>
     coords = c("lon", "lat"), 
     crs = st_crs(muni_seat),
     remove = FALSE
-  ) %>%
+  ) |> 
   # join with municipalities, within buffer
   st_join(
-      muni_seat,
-      .,
+      y = muni_seat,
       join = st_is_within_distance, 
       dist = buffer,
       left = FALSE  # Inner join (only keep matches)
@@ -247,6 +254,31 @@ fires_by_muni_buffer50 <- fires_ref_sat |>
   st_drop_geometry()
 
 ```
+
+# Save intermediate file as parquet
+
+```{r}
+dataset_parquet_path = "../Inputs/fires_by_muni_buffer50/parquet"
+
+# Write with group_by for RAM safety
+fires_by_muni_buffer50 |> 
+  group_by(year) |> 
+  write_dataset(
+    path = dataset_parquet_path,
+    format = "parquet"
+  )
+```
+
+# Reopen intermediate file as parquet
+
+```{r}
+dataset_parquet_path = "../Inputs/fires_by_muni_buffer50/parquet"
+fires_by_muni_buffer50 <- open_dataset(
+  dataset_parquet_path,
+  format = "parquet"
+)
+```
+
 
 
 
