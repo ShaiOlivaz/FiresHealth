@@ -355,7 +355,29 @@ unmatched_sisam_names <- sisam |>
   collect()
 ```
 
-# Match
+## Include unmatched names in dictionary
+
+We use a fuzzy join function to find matches in similar names.
+
+```{r}
+# max_dist is a threshold (0-1). 0.1 usually allows for "i/y" or "eo/eu" swaps
+correction_table <- unmatched_sisam_names |> 
+  stringdist_left_join(muni_dict, 
+                       by = c("name_muni", "name_state"), 
+                       method = "jw", # Jaro-Winkler
+                       max_dist = 0.2, 
+                       distance_col = "dist"
+  ) |> 
+  # Keep only the best match per name
+  group_by(name_muni.x) |>
+  slice_min(name_muni.dist, n = 1) |> 
+  ungroup()
+```
+
+
+
+##
+
 
 ```{r}
 sisam_right_names <- sisam_sample |> 
