@@ -31,6 +31,10 @@ library(geoarrow)
 
 # Personal functions
 source("./Functions/bulk_rds.R")
+source("./Functions/calculate_bearing_arrow.R")
+
+# Notifications
+library(beepr)
 ```
 
 # Importing data as Arrow dataset
@@ -93,6 +97,7 @@ fires_ref_sat <- fires_ref_sat |>
     month = month(data_pas),
     day = day(data_pas)
   )
+  
 
 # Export as Parquet
 write_dataset(
@@ -128,12 +133,13 @@ sisam = open_csv_dataset(
     )
 )
 
-# Create Year and Month Columns
+# Create Time Columns
 sisam <- sisam |> 
   mutate(
     year = year(datahora),
     month = month(datahora),
-    day = day(datahora)
+    day = day(datahora),
+    hour = hour(datahora)
   )
 
 # Export as Parquet
@@ -167,6 +173,9 @@ fires_all_sats <- open_dataset(
   dataset_parquet_path,
   format = "parquet"
 )
+
+# delete path
+rm(dataset_parquet_path)
 ```
 
 ## Reference Satellite
@@ -178,6 +187,9 @@ fires_ref_sat <- open_dataset(
   dataset_parquet_path,
   format = "parquet"
 )
+
+# delete path
+rm(dataset_parquet_path)
 ```
 
 For conference, we check the number of observations in the dataset. It's 5,107,973.
@@ -240,6 +252,9 @@ buffer = 50*1000 # in meters
 ## Join with Municipality Seats
 
 ```{r}
+#start timer
+start_time <- Sys.time()
+
 fires_by_muni_buffer50 <- fires_ref_sat |>
   # Filter only relevant columns
   select(
@@ -261,9 +276,12 @@ fires_by_muni_buffer50 <- fires_ref_sat |>
     ) |> 
   st_drop_geometry()
 
+# end timer, notify
+Sys.time() - start_time
+beep()
 ```
 
-# Save intermediate file as parquet
+## Save fires by muni file as parquet
 
 ```{r}
 dataset_parquet_path = "../Inputs/fires_by_muni_buffer50/parquet"
@@ -275,16 +293,23 @@ fires_by_muni_buffer50 |>
     path = dataset_parquet_path,
     format = "parquet"
   )
+
+# delete path
+rm(dataset_parquet_path)
 ```
 
-# Reopen intermediate file as parquet
+## Reopen fires by muni from parquet
 
 ```{r}
 dataset_parquet_path = "../Inputs/fires_by_muni_buffer50/parquet"
+
 fires_by_muni_buffer50 <- open_dataset(
   dataset_parquet_path,
   format = "parquet"
 )
+
+# delete path
+rm(dataset_parquet_path)
 ```
 
 Sample for tests.
@@ -355,6 +380,17 @@ unmatched_sisam_names <- sisam |>
   collect()
 ```
 
+### Save to RDS, Reopen
+
+```{r}
+bulk_write_rds(unmatched_sisam_names)
+```
+
+```{r}
+bulk_read_rds(unmatched_sisam_names)
+```
+
+
 ## Include unmatched names in dictionary
 
 We use a fuzzy join function to find matches in similar names.
@@ -374,30 +410,327 @@ correction_table <- unmatched_sisam_names |>
   ungroup()
 ```
 
-
-
-##
-
+## Manually correct the list
 
 ```{r}
-sisam_right_names <- sisam_sample |> 
-  as_arrow_table() |> 
+correction_table <- correction_table |> 
+  filter(
+    !name_muni.x %in% c(
+      # municipalities created after 2010, without seat data
+      "balneario rincao",
+      "mojui dos campos",
+      "pescaria brava",
+      "pinto bandeira",
+      "paraiso das aguas",
+      
+      # lakes in RS, not municipalities 
+      "lagoa dos patos",
+      "lagoa mirim")
+    ) |> 
+  # select name and code
   select(
-    # SELECT ONLY RELEVANT COLUMNS
+    name_muni = name_muni.x,
+    code_muni,
+    name_state = name_state.x
+  ) |> 
+  # insert correct name-code to municipalities with wrong matching
+  mutate(
+    code_muni = case_when(
+      # named embu in the seats data
+      name_muni == "embu das artes" ~ 3515004,
+      # renamed from santarem after 2010
+      name_muni ==  "joca claudino" ~ 2513653,
+      # named serido in the seats data
+      name_muni ==  "sao vicente do serido" ~ 2515401,
+      # renamed from presidente juscelino after 2010
+      name_muni ==  "serra caiada" ~ 2410306,
+      .default = code_muni
+    )
   )
+  
+```
 
+## Append corrected names to muni seats dictionary
+
+```{r}
+muni_dict_corrected <- muni_dict |> 
+  bind_rows(
+    correction_table
+  )
+```
+
+## Add code_muni to sisam
+
+```{r}
+sisam_with_code_muni <- sisam |> 
+  # strip muni and state name of any diacritics
   mutate(
     name_muni = str_strip(municipio_nome),
     name_state = str_strip(uf_nome) 
   ) |>
+  # join with muni dict to get muni code
   left_join(
     muni_dict,
-    by = join_by(name_muni, name_state),
-    relationship = "many-to-one"
+    by = join_by(name_muni, name_state)
+  ) 
+```
+
+### Save to parquet
+
+```{r}
+dataset_parquet_path = "../Inputs/sisam_with_code_muni/parquet"
+
+# Write with group_by for RAM safety
+sisam_with_code_muni |> 
+  group_by(year) |> 
+  write_dataset(
+    path = dataset_parquet_path,
+    format = "parquet"
+  )
+
+# delete path
+rm(dataset_parquet_path)
+```
+
+### Reopen from parquet
+
+```{r}
+dataset_parquet_path = "../Inputs/sisam_with_code_muni/parquet"
+
+sisam_with_code_muni <- open_dataset(
+  dataset_parquet_path,
+  format = "parquet"
+)
+
+# delete path
+rm(dataset_parquet_path)
+```
+
+# Join fires to sisam data
+
+First, I check which distinct hours are available, and select only the afternoon data (18).
+
+```{r}
+sisam |>
+  filter(
+    year == 2000,
+    month == 1,
+    day == 1
   ) |> 
+  select(hour) |> 
+  distinct() |> 
   collect()
 ```
 
+Finally, join sisam with fires.
 
+```{r}
+# Start timer
+start_time <- Sys.time()
+
+fires_sisam_buffer50 <- left_join(
+  # fires data
+  fires_by_muni_buffer50 |>
+    # to align with sisam, which stops in 2019
+    filter(
+      year < 2020
+    ) |> 
+    # align datatypes with sisam
+    mutate(
+      # recast int32 columns to int64
+      year = cast(year, int64()),
+      month = cast(month, int64()),
+      day = cast(day, int64()),
+      # convert code to string
+      code_muni = cast(code_muni, string())
+    ) |> 
+    rename(
+      # differentiate fires lon and lat
+      lat_fire = lat,
+      lon_fire = lon
+    ),
+  
+  # sisam data
+  sisam_with_code_muni |>
+    # select afternoon data
+    filter(hour == 18) |> 
+    mutate(
+      # ensure columns are int64
+      year = cast(year, int64()),
+      month = cast(month, int64()),
+      day = cast(day, int64()),
+      # convert code to string
+      code_muni = cast(code_muni, string())
+    ),
+  
+  by = join_by(code_muni, year, month, day)
+  ) |> 
+  compute()
+
+# end timer, notify
+Sys.time() - start_time
+beep()
+```
+
+## Save to parquet
+
+```{r}
+#start timer
+start_time <- Sys.time()
+
+dataset_parquet_path = "../Inputs/fires_sisam_buffer50/parquet"
+
+fires_sisam_buffer50 |> 
+  group_by(year) |> 
+  write_dataset(
+    path = dataset_parquet_path,
+    format = "parquet"
+  )
+
+# delete path
+rm(dataset_parquet_path)
+
+# end timer, notify
+Sys.time() - start_time
+beep()
+```
+
+## Reopen from parquet
+
+```{r}
+dataset_parquet_path = "../Inputs/fires_sisam_buffer50/parquet"
+
+fires_sisam_buffer50 <- open_dataset(
+  dataset_parquet_path,
+  format = "parquet"
+)
+
+# delete path
+rm(dataset_parquet_path)
+```
+
+Sample for tests.
+
+```{r}
+fires_sisam_buffer50_sample <- fires_sisam_buffer50 |>
+  filter(year == 2003) |> 
+  slice_sample(n = 100) |> 
+  collect()
+```
+
+# Calculate bearing (angle) from city to fire
+
+Wind direction is represented as the angle from North to the direction *from which* the wind is coming. Therefore, we need to calculate the bearing angle from the municipality seats to the fires, to get the direction the smoke would come *from*.
+
+```{r}
+#start timer
+start_time <- Sys.time()
+
+fires_sisam_bearings_buffer50 <- fires_sisam_buffer50 |>
+  # Stardardize wind direction name
+  rename(
+    wind_direction = vento_direcao_grau
+  ) |> 
+  mutate(
+    # bearing from muni seat to fire
+    fire_direction = calculate_bearing_arrow(
+      lon_from = lon_muni,
+      lat_from = lat_muni,
+      lon_to = lon_fire,
+      lat_to = lat_fire
+    ),
+    # difference of degrees between wind and fire direction
+    # because of the wrap around the circle, we need to find the shortest
+    # direction (clockwise or counterclockwise) between these two angles
+    direction_diff = pmin(
+      abs(wind_direction - fire_direction),
+      360 - abs(wind_direction - fire_direction)
+    )
+  ) |>
+  # clean dataframe
+  select(
+    id_bdq, lon_fire, lat_fire, data_pas, bioma, year, month, day, hour,
+    code_muni, 
+    name_muni = name_muni.y, 
+    name_state = name_state.y,
+    lon_muni, lat_muni,
+    co_ppb, no2_ppb, o3_ppb, pm25_ugm3, so2_ugm3,
+    precipitacao_mmdia, temperatura_c,
+    umidade_relativa_percentual, 
+    wind_speed_ms = vento_velocidade_ms,
+    wind_direction, fire_direction, direction_diff
+  ) |> 
+  # dummies weather difference is within X deg
+  mutate(
+    upwind_30 = if_else(direction_diff < 30, T, F),
+    upwind_35 = if_else(direction_diff < 35, T, F),
+    upwind_40 = if_else(direction_diff < 40, T, F),
+    upwind_45 = if_else(direction_diff < 45, T, F)
+  ) |> 
+  # avoid bugs in calculation
+  compute()
+
+# end timer, notify
+Sys.time() - start_time
+beep(2)
+```
+
+## Save to Parquet
+
+```{r}
+#start timer
+start_time <- Sys.time()
+
+dataset_parquet_path = "../Inputs/fires_sisam_bearings_buffer50/parquet"
+
+fires_sisam_bearings_buffer50 |> 
+  group_by(year) |> 
+  write_dataset(
+    path = dataset_parquet_path,
+    format = "parquet",
+    existing_data_behavior = "overwrite"
+  )
+
+# delete path
+rm(dataset_parquet_path)
+
+# end timer, notify
+Sys.time() - start_time
+beep()
+```
+
+## Reopen from parquet
+
+```{r}
+dataset_parquet_path = "../Inputs/fires_sisam_bearings_buffer50/parquet"
+
+fires_sisam_bearings_buffer50 <- open_dataset(
+  dataset_parquet_path,
+  format = "parquet"
+)
+
+# delete path
+rm(dataset_parquet_path)
+```
+
+## Sample for tests
+
+```{r}
+fires_sisam_bearings_buffer50_sample <- fires_sisam_bearings_buffer50 |> 
+  filter(
+    year == 2004
+  ) |>
+  slice_sample(n = 100) |> 
+  collect()
+```
+
+## Temporary: write csv for conference
+
+```{r}
+write_csv(
+  fires_sisam_bearings_buffer50_sample,
+  file = "../Outputs/fires_sisam_bearings_buffer50_sample.csv"
+)
+```
 
 
